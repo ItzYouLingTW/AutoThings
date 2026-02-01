@@ -1,0 +1,27 @@
+# Gradle 暫存與構建輸出
+.gradle/
+build/
+
+# IDE 設定 (IntelliJ IDEA)
+.idea/
+*.iml
+out/
+
+# IDE 設定 (Eclipse)
+.settings/
+.project
+.classpath
+bin/
+
+# 執行環境 (執行 Minecraft 時產生的檔案)
+run/
+runClient/
+runServer/
+logs/
+screenshots/
+saves/
+resourcepacks/
+options.txt
+
+# Java 相關
+*.class

@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "autothings",
+  "version": "${version}",
+  "name": "AutoThings",
+  "description": "一個集結部分自動化功能的模組.",
+  "authors": ["ItzYouLing_TW", "ChatGPT", "Gemini"],
+  "contact": {},
+  "license": "MIT",
+  "icon": "assets/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "fabric-datagen": [
+      "net.yotk.ylats.client.atsMainDataGenerator"
+    ],
+    "client": [
+      "net.yotk.ylats.client.atsMainClient"
+    ],
+    "main": [
+      "net.yotk.ylats.atsMain"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric-api": "*",
+    "minecraft": ">=${minecraft_version}"
+  }
+}
