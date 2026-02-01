@@ -12,7 +12,9 @@ import net.minecraft.command.argument.IdentifierArgumentType;
 import net.minecraft.command.argument.ItemStackArgumentType;
 import net.minecraft.item.Item;
 import net.minecraft.registry.RegistryKeys;
+import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 import net.yotk.ylats.client.grind.AutoGrindState;
 import net.yotk.ylats.client.take.AutoTakeState;
@@ -33,11 +35,19 @@ public class AutoCommand {
         );
     }
 
+    // ------------------- 功能開關 (顏色修正) -------------------
+
     private static LiteralArgumentBuilder<FabricClientCommandSource> toggleTakeItem() {
         return ClientCommandManager.literal("takeitem")
                 .executes(ctx -> {
                     AutoTakeState.ENABLED = !AutoTakeState.ENABLED;
-                    ctx.getSource().sendFeedback(Text.literal("§7[AT系統] §f自動取物: " + (AutoTakeState.ENABLED ? "§a開啟" : "§c關閉")));
+                    MutableText status = AutoTakeState.ENABLED ?
+                            Text.literal("開啟").formatted(Formatting.GREEN) :
+                            Text.literal("關閉").formatted(Formatting.RED);
+
+                    ctx.getSource().sendFeedback(Text.literal("[AT系統] ").formatted(Formatting.GRAY)
+                            .append(Text.literal("自動取物: ").formatted(Formatting.WHITE))
+                            .append(status));
                     return 1;
                 });
     }
@@ -46,12 +56,18 @@ public class AutoCommand {
         return ClientCommandManager.literal("grind")
                 .executes(ctx -> {
                     AutoGrindState.ENABLED = !AutoGrindState.ENABLED;
-                    ctx.getSource().sendFeedback(Text.literal("§7[AT系統] §f自動磨石: " + (AutoGrindState.ENABLED ? "§a開啟" : "§c關閉")));
+                    MutableText status = AutoGrindState.ENABLED ?
+                            Text.literal("開啟").formatted(Formatting.GREEN) :
+                            Text.literal("關閉").formatted(Formatting.RED);
+
+                    ctx.getSource().sendFeedback(Text.literal("[AT系統] ").formatted(Formatting.GRAY)
+                            .append(Text.literal("自動磨石: ").formatted(Formatting.WHITE))
+                            .append(status));
                     return 1;
                 });
     }
 
-    // ------------------- 自動取物配置 -------------------
+    // ------------------- 自動取物配置 (列表上色修正) -------------------
 
     private static ArgumentBuilder<FabricClientCommandSource, ?> setTakeItemBranch(CommandRegistryAccess registryAccess) {
         return ClientCommandManager.literal("takeitem")
@@ -61,9 +77,10 @@ public class AutoCommand {
                                     Item item = ItemStackArgumentType.getItemStackArgument(ctx, "item").getItem();
                                     if (AutoTakeState.TAKE_ITEMS.add(item)) {
                                         AutoTakeState.save();
-                                        ctx.getSource().sendFeedback(Text.literal("§a成功新增取物項目: §b").append(Text.translatable(item.getTranslationKey())));
+                                        ctx.getSource().sendFeedback(Text.literal("成功新增取物項目: ").formatted(Formatting.GREEN)
+                                                .append(Text.translatable(item.getTranslationKey()).formatted(Formatting.AQUA)));
                                     } else {
-                                        ctx.getSource().sendFeedback(Text.literal("§e此物品已在取物清單中。"));
+                                        ctx.getSource().sendFeedback(Text.literal("此物品已在取物清單中。").formatted(Formatting.YELLOW));
                                     }
                                     return 1;
                                 })))
@@ -73,23 +90,29 @@ public class AutoCommand {
                                     Item item = ItemStackArgumentType.getItemStackArgument(ctx, "item").getItem();
                                     if (AutoTakeState.TAKE_ITEMS.remove(item)) {
                                         AutoTakeState.save();
-                                        ctx.getSource().sendFeedback(Text.literal("§c已移除取物項目: §b").append(Text.translatable(item.getTranslationKey())));
+                                        ctx.getSource().sendFeedback(Text.literal("已移除取物項目: ").formatted(Formatting.RED)
+                                                .append(Text.translatable(item.getTranslationKey()).formatted(Formatting.AQUA)));
                                     } else {
-                                        ctx.getSource().sendFeedback(Text.literal("§e取物清單中找不到該物品。"));
+                                        ctx.getSource().sendFeedback(Text.literal("取物清單中找不到該物品。").formatted(Formatting.YELLOW));
                                     }
                                     return 1;
                                 })))
                 .then(ClientCommandManager.literal("list")
                         .executes(ctx -> {
-                            ctx.getSource().sendFeedback(Text.literal("§6--- 自動取物清單 ---"));
-                            if (AutoTakeState.TAKE_ITEMS.isEmpty()) ctx.getSource().sendFeedback(Text.literal(" §7(清單為空)"));
-                            AutoTakeState.TAKE_ITEMS.forEach(i ->
-                                    ctx.getSource().sendFeedback(Text.literal(" §7- §b").append(Text.translatable(i.getTranslationKey()))));
+                            ctx.getSource().sendFeedback(Text.literal("--- 自動取物清單 ---").formatted(Formatting.GOLD));
+                            if (AutoTakeState.TAKE_ITEMS.isEmpty()) {
+                                ctx.getSource().sendFeedback(Text.literal(" (清單為空)").formatted(Formatting.GRAY));
+                            } else {
+                                AutoTakeState.TAKE_ITEMS.forEach(i -> {
+                                    ctx.getSource().sendFeedback(Text.literal(" - ").formatted(Formatting.GRAY)
+                                            .append(Text.translatable(i.getTranslationKey()).formatted(Formatting.AQUA)));
+                                });
+                            }
                             return 1;
                         }));
     }
 
-    // ------------------- 自動磨石配置 -------------------
+    // ------------------- 自動磨石配置 (括號上色修正) -------------------
 
     private static ArgumentBuilder<FabricClientCommandSource, ?> setGrindEnchBranch(CommandRegistryAccess registryAccess) {
         return ClientCommandManager.literal("grind")
@@ -113,7 +136,15 @@ public class AutoCommand {
                                             AutoGrindState.KEEP_ENCHANTS.put(enchId, level);
                                             AutoGrindState.save();
 
-                                            ctx.getSource().sendFeedback(Text.literal("§a已設定保留附魔: §b" + enchId + " §f(§f≥ §e" + level + "§f)"));
+                                            // 格式：已設定保留附魔: ID (≥ 等級)
+                                            MutableText feedback = Text.literal("已設定保留附魔: ").formatted(Formatting.GREEN)
+                                                    .append(Text.literal(enchId).formatted(Formatting.AQUA))
+                                                    .append(Text.literal(" (").formatted(Formatting.WHITE))
+                                                    .append(Text.literal("≥ ").formatted(Formatting.WHITE))
+                                                    .append(Text.literal(String.valueOf(level)).formatted(Formatting.YELLOW))
+                                                    .append(Text.literal(")").formatted(Formatting.WHITE));
+
+                                            ctx.getSource().sendFeedback(feedback);
                                             return 1;
                                         }))))
                 .then(ClientCommandManager.literal("remove")
@@ -121,7 +152,7 @@ public class AutoCommand {
                                 .suggests((ctx, builder) -> {
                                     String remaining = builder.getRemaining().toLowerCase();
                                     AutoGrindState.KEEP_ENCHANTS.keySet().stream()
-                                            .filter(id -> id.startsWith(remaining) || (id.contains(":") && id.split(":")[1].startsWith(remaining)))
+                                            .filter(id -> id.toLowerCase().contains(remaining))
                                             .forEach(builder::suggest);
                                     return builder.buildFuture();
                                 })
@@ -129,20 +160,29 @@ public class AutoCommand {
                                     String name = StringArgumentType.getString(ctx, "enchantment");
                                     if (AutoGrindState.KEEP_ENCHANTS.remove(name) != null) {
                                         AutoGrindState.save();
-                                        ctx.getSource().sendFeedback(Text.literal("§c已移除保留附魔: §b" + name));
+                                        ctx.getSource().sendFeedback(Text.literal("已移除保留附魔: ").formatted(Formatting.RED)
+                                                .append(Text.literal(name).formatted(Formatting.AQUA)));
                                     } else {
-                                        ctx.getSource().sendFeedback(Text.literal("§e保留清單中找不到: " + name));
+                                        ctx.getSource().sendFeedback(Text.literal("保留清單中找不到: ").formatted(Formatting.YELLOW)
+                                                .append(Text.literal(name).formatted(Formatting.WHITE)));
                                     }
                                     return 1;
                                 })))
                 .then(ClientCommandManager.literal("list")
                         .executes(ctx -> {
-                            ctx.getSource().sendFeedback(Text.literal("§6--- 自動磨石保留清單 ---"));
+                            ctx.getSource().sendFeedback(Text.literal("--- 自動磨石保留清單 ---").formatted(Formatting.GOLD));
                             if (AutoGrindState.KEEP_ENCHANTS.isEmpty()) {
-                                ctx.getSource().sendFeedback(Text.literal(" §7(清單為空)"));
+                                ctx.getSource().sendFeedback(Text.literal(" (清單為空)").formatted(Formatting.GRAY));
                             } else {
-                                AutoGrindState.KEEP_ENCHANTS.forEach((id, lv) ->
-                                        ctx.getSource().sendFeedback(Text.literal(" §7- §b" + id + " §f(§f≥ §e" + lv + "§f)")));
+                                AutoGrindState.KEEP_ENCHANTS.forEach((id, lv) -> {
+                                    MutableText line = Text.literal(" - ").formatted(Formatting.GRAY)
+                                            .append(Text.literal(id).formatted(Formatting.AQUA))
+                                            .append(Text.literal(" (").formatted(Formatting.WHITE))
+                                            .append(Text.literal("≥ ").formatted(Formatting.WHITE))
+                                            .append(Text.literal(String.valueOf(lv)).formatted(Formatting.YELLOW))
+                                            .append(Text.literal(")").formatted(Formatting.WHITE));
+                                    ctx.getSource().sendFeedback(line);
+                                });
                             }
                             return 1;
                         }));
