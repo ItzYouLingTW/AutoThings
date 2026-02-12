@@ -29,7 +29,6 @@ import net.yotk.ylats.client.grind.AutoGrindState;
 import net.yotk.ylats.client.prepare_litematica.AutoPrepareState;
 import net.yotk.ylats.client.take.AutoTakeState;
 
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -38,12 +37,19 @@ public class AutoCommand {
     public static void register() {
         ClientCommandRegistrationCallback.EVENT.register(
                 (dispatcher, registryAccess) -> {
+                    // 建立 set 子分支
+                    var setBranch = ClientCommandManager.literal("set")
+                            .then(setTakeItemBranch(registryAccess))
+                            .then(setGrindEnchBranch(registryAccess));
+
+                    // ✅ 如果有 Litematica，擴充 set 分支
+                    if (FabricLoader.getInstance().isModLoaded("litematica")) {
+                        setBranch = setBranch.then(setPrepareLitematicaBranch());
+                    }
+
                     // 建立主指令 /auto
                     var autoNode = ClientCommandManager.literal("auto")
-                            .then(ClientCommandManager.literal("set")
-                                    .then(setTakeItemBranch(registryAccess))
-                                    .then(setGrindEnchBranch(registryAccess))
-                            )
+                            .then(setBranch)
                             .then(toggleTakeItem())
                             .then(toggleGrindstone());
 
@@ -277,22 +283,25 @@ public class AutoCommand {
                             }
 
                             // 4. 更新到我們的待取名單
-                            AutoPrepareState.clear();
+                            // 4. 更新到我們的待取名單 (使用 setNeeds)
+                            Map<Item, Integer> needsMap = new HashMap<>();
                             int count = 0;
+
                             for (var req : reqs) {
-                                // 使用 getCountTotal() 因為我們要的是藍圖總需求，後續由 Ticker 遞減
                                 int totalNeeded = req.getCountTotal();
                                 if (totalNeeded > 0) {
-                                    AutoPrepareState.NEEDS.put(req.getStack().getItem(), totalNeeded);
+                                    needsMap.put(req.getStack().getItem(), totalNeeded);
                                     count++;
                                 }
                             }
+
+                            AutoPrepareState.setNeeds(needsMap);
 
                             ctx.getSource().sendFeedback(Text.literal("[AT系統] ").formatted(Formatting.GRAY)
                                     .append(Text.literal("成功從藍圖載入 ").formatted(Formatting.GREEN))
                                     .append(Text.literal(String.valueOf(count)).formatted(Formatting.AQUA))
                                     .append(Text.literal(" 種物品需求。").formatted(Formatting.GREEN)));
-                            return 1;
+
                         }));
     }
 }
