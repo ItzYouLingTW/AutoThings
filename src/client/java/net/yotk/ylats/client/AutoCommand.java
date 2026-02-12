@@ -302,6 +302,7 @@ public class AutoCommand {
                                     .append(Text.literal(String.valueOf(count)).formatted(Formatting.AQUA))
                                     .append(Text.literal(" 種物品需求。").formatted(Formatting.GREEN)));
 
+                            return 1;
                         }));
     }
 }
